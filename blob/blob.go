@@ -78,7 +78,7 @@ func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte
 		ChainID:    uint256.MustFromBig(chainid),
 		Nonce:      nonce,
 		GasTipCap:  uint256.NewInt(1e9),           // 1gwei
-		GasFeeCap:  uint256.MustFromBig(gasPrice), // gas price + 50gwei
+		GasFeeCap:  uint256.MustFromBig(gasPrice), // gas price
 		Gas:        21000,
 		Value:      uint256.NewInt(0),
 		Data:       nil,
