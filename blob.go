@@ -1,31 +1,86 @@
 package goblob
 
 import (
+	"context"
+	"crypto/ecdsa"
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/holiman/uint256"
+	blobutil "github.com/offchainlabs/nitro/util/blobs"
 )
 
-func CreateSidecar(blobs *[]kzg4844.Blob) (*types.BlobTxSidecar, error) {
-	var commitments []kzg4844.Commitment
-	var proofs []kzg4844.Proof
-	for _, blob := range *blobs {
-		commitment, err := kzg4844.BlobToCommitment(blob)
-		if err != nil {
-			return nil, err
-		}
-
-		proof, err := kzg4844.ComputeBlobProof(blob, commitment)
-		if err != nil {
-			return nil, err
-		}
-
-		commitments = append(commitments, commitment)
-		proofs = append(proofs, proof)
-
+// create eip4844 sidecar from blobs
+func CreateSidecarAndVersionedHashes(blobs *[]kzg4844.Blob) (*types.BlobTxSidecar, []common.Hash, error) {
+	commitments, versionedHashes, err := blobutil.ComputeCommitmentsAndHashes(*blobs)
+	if err != nil {
+		return nil, err
 	}
+
+	proofs, err := blobutil.ComputeBlobProofs(*blobs, commitments)
 	return &types.BlobTxSidecar{
 		Blobs:       *blobs,
 		Commitments: commitments,
 		Proofs:      proofs,
-	}, nil
+	}, versionedHashes, nil
+}
+
+// send blob tx with data in the blob
+func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte) (*types.BlobTx, error) {
+
+	blobs, err := blobutil.EncodeBlobs(data)
+	if err != nil {
+		return nil, err
+	}
+
+	sidecar, versionedHashes, err := CreateSidecarAndVersionedHashes(&blobs)
+	if err != nil {
+		return nil, err
+	}
+
+	// chainid
+	chainid, err := ethClient.ChainID(context.Background())
+
+	// nonce
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		return nil, err
+	}
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("error casting public key to ECDSA")
+	}
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	nonce, err := ethClient.PendingNonceAt(context.Background(), fromAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	// suggested gas price
+	gasPrice, err := ethClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &types.BlobTx{
+		ChainID:    uint256.MustFromBig(chainid),
+		Nonce:      nonce,
+		GasTipCap:  uint256.NewInt(1e9),           // 1gwei
+		GasFeeCap:  uint256.MustFromBig(gasPrice), // gas price + 50gwei
+		Gas:        21000,
+		Value:      uint256.NewInt(0),
+		Data:       nil,
+		To:         common.Address{0x03, 0x04, 0x05},
+		BlobFeeCap: uint256.NewInt(3e10), // 30gwei
+		BlobHashes: versionedHashes,
+		Sidecar:    sidecar,
+	}
+
+	return tx, nil
+
 }
