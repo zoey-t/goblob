@@ -1,4 +1,4 @@
-package goblob
+package blob
 
 import (
 	"context"
@@ -18,10 +18,14 @@ import (
 func CreateSidecarAndVersionedHashes(blobs *[]kzg4844.Blob) (*types.BlobTxSidecar, []common.Hash, error) {
 	commitments, versionedHashes, err := blobutil.ComputeCommitmentsAndHashes(*blobs)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	proofs, err := blobutil.ComputeBlobProofs(*blobs, commitments)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &types.BlobTxSidecar{
 		Blobs:       *blobs,
 		Commitments: commitments,
@@ -44,6 +48,9 @@ func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte
 
 	// chainid
 	chainid, err := ethClient.ChainID(context.Background())
+	if err != nil {
+		return nil, err
+	}
 
 	// nonce
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)

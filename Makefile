@@ -27,7 +27,7 @@ test:
 # test coverage
 .PHONY: coverage
 coverage:
-	go test -coverprofile=/tmp/go-sim-lb.cover.tmp ./...
+	go test -coverprofile=/tmp/go-sim-lb.cover.tmp ./... vvv
 	go tool cover -func /tmp/go-sim-lb.cover.tmp
 	unlink /tmp/go-sim-lb.cover.tmp
 
