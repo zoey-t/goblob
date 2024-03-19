@@ -34,7 +34,7 @@ func CreateSidecarAndVersionedHashes(blobs *[]kzg4844.Blob) (*types.BlobTxSideca
 }
 
 // send blob tx with data in the blob
-func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte) (*types.BlobTx, error) {
+func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte, receiverAddrHex string) (*types.BlobTx, error) {
 
 	blobs, err := blobutil.EncodeBlobs(data)
 	if err != nil {
@@ -82,7 +82,7 @@ func CreateBlobTx(ethClient *ethclient.Client, privateKeyHex string, data []byte
 		Gas:        21000,
 		Value:      uint256.NewInt(0),
 		Data:       nil,
-		To:         common.Address{0x03, 0x04, 0x05},
+		To:         common.HexToAddress(receiverAddrHex),
 		BlobFeeCap: uint256.NewInt(3e10), // 30gwei
 		BlobHashes: versionedHashes,
 		Sidecar:    sidecar,

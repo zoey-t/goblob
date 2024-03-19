@@ -30,7 +30,8 @@ func TestSendBlobTx(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	blobTx, err := CreateBlobTx(client, privateKeyHex, data)
+	receiverAddrHex := "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
+	blobTx, err := CreateBlobTx(client, privateKeyHex, data, receiverAddrHex)
 	if err != nil {
 		t.Fatal(err)
 	}
